@@ -19,6 +19,16 @@ app.get('/location', searchToLatLong);
 
 app.get('/weather', getWeather);
 
+app.get('/events', getEvents);
+
+
+
+// Error handler
+function handleError(err, res) {
+  console.error(err);
+  if (res) res.status(500).send('Sorry, something went wrong');
+}
+
 //LOGIC
 
 function searchToLatLong(request, response) {
@@ -30,7 +40,7 @@ function searchToLatLong(request, response) {
       response.send(location);
     })
     .catch((error) => {
-      response.send(error);
+      handleError(error);
     });
 }
 
@@ -46,20 +56,43 @@ function getWeather(request, response) {
 
   return superagent.get(url)
     .then(res => {
-      const weatherEntries = res.body.daily.data.map(day => {
+      const weatherEntries = res.body.daily.data.map((day) => {
         return new Weather(day);
       })
 
       response.send(weatherEntries);
     })
-    .catch(error => {
-      response.send(error);
+    .catch((error) => {
+      handleError(error);
     });
 }
 
 function Weather(day){
   this.forecast = day.summary;
   this.time = new Date(day.time * 1000).toString().slice(0,15);
+}
+
+function getEvents(request, response) {
+  const url = `https://www.eventbriteapi.com/v3/events/search?token=${process.env.EVENTBRITE_API_KEY}&location.address=${request.query.data.formatted_query}`;
+
+  return superagent.get(url)
+    .then(res => {
+      const eventEntries = res.body.events.map((event) => {
+        return new Event(event);
+      })
+
+      response.send(eventEntries);
+    })
+    .catch( (error) => {
+      handleError(error);
+    });
+}
+
+function Event(event) {
+  this.link = event.url;
+  this.name = event.name.text;
+  this.event_date = new Date(event.start.local).toString().slice(0, 15);
+  this.summary = event.summary;
 }
 
 app.listen(PORT, () => {
