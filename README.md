@@ -1,18 +1,18 @@
 # CityExplorer
 
-Number and name of feature: ________________________________
+Number and name of feature: Added Events to CityExplorer
 
-Estimate of time needed to complete: _____
+Estimate of time needed to complete: 1 hour
 
-Start time: _____
+Start time: 1:00
 
-Finish time: _____
+Finish time: 1:30
 
-Actual time needed to complete: _____
+Actual time needed to complete: 30 minutes
 
 # Project Name
 
-**Author**: Your Name Goes Here
+**Author**: Jessica Walters
 **Version**: 1.0.0 (increment the patch/fix version number if you make more commits past your first submission)
 
 ## Overview
