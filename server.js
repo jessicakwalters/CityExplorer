@@ -1,42 +1,37 @@
 'use-strict'
 
+//Load Environment Variables
 require('dotenv').config();
+
+//Application Dependencies
 const express = require('express');
-const app = express();
 const cors = require('cors');
+const superagent = require('superagent')
 
+//App SetUp
+const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.use(cors());
 
 
 //ROUTES
-app.get('/location', (req, res) => {
-  try {
-    const locationData = searchToLatLong(req.query.data);
-    res.send(locationData);
-  } catch (error) {
-    console.log(error);
-    response.status(500).send('Status: 500. Something is broken.');
-  }
-});
+app.get('/location', searchToLatLong);
 
-app.get('/weather', (req, res) => {
-  try {
-    const weatherData = getWeather();
-    res.send(weatherData);
-  } catch (error) {
-    console.log(error);
-    response.status(500).send('Status: 500. Something is broken.');
-  }
-});
+app.get('/weather', getWeather);
 
 //LOGIC
 
-function searchToLatLong(query) {
-  const geoData = require('./data/geo.json');
-  const location = new Location(query, geoData);
-  return location;
+function searchToLatLong(request, response) {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${request.query.data}&key=${process.env.GEOCODE_API_KEY}`
+
+  return superagent.get(url)
+    .then((result) => {
+      const location = new Location(request.query.data, JSON.parse(result.text));
+      response.send(location);
+    })
+    .catch((error) => {
+      response.send(error);
+    });
 }
 
 function Location(query, res) {
@@ -46,16 +41,20 @@ function Location(query, res) {
   this.longitude = res.results[0].geometry.location.lng;
 }
 
-function getWeather(){
-  const darksyData = require('./data/darksky.json');
+function getWeather(request, response) {
+  const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`
 
-  const weatherSummaries = [];
+  return superagent.get(url)
+    .then(res => {
+      const weatherEntries = res.body.daily.data.map(day => {
+        return new Weather(day);
+      })
 
-  darksyData.daily.data.forEach( (day) => {
-    weatherSummaries.push(new Weather(day));
-  });
-
-  return weatherSummaries;
+      response.send(weatherEntries);
+    })
+    .catch(error => {
+      response.send(error);
+    });
 }
 
 function Weather(day){
