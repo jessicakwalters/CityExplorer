@@ -6,13 +6,18 @@ require('dotenv').config();
 //Application Dependencies
 const express = require('express');
 const cors = require('cors');
-const superagent = require('superagent')
+const superagent = require('superagent');
+const pg = require('pg');
 
 //App SetUp
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors());
 
+//database setup
+const client = new pg.Client(process.env.DATABASE_URL);
+client.connect();
+client.on('error', err => console.error(err));
 
 //ROUTES
 app.get('/location', searchToLatLong);
