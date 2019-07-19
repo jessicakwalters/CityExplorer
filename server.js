@@ -12,7 +12,6 @@ app.use(cors());
 
 //ROUTES
 app.get('/location', (req, res) => {
-  //res.send('working');
   const geoData = require('./data/geo.json');
   const location = new Location(req.query.data, geoData);
   res.send(location);
@@ -20,11 +19,11 @@ app.get('/location', (req, res) => {
 
 //LOGIC
 
-function LOCATION(query, geoData) {
-    this.search_query = query;
-    this.formatted_query = geoData.results[0].formatted_address;
-    this.latitude = geoData.results[0].geometry.location.lat;
-    this.longitude = geoData.results[0].geometry.location.lng;
+function Location(query, geoData) {
+  this.search_query = query;
+  this.formatted_query = geoData.results[0].formatted_address;
+  this.latitude = geoData.results[0].geometry.location.lat;
+  this.longitude = geoData.results[0].geometry.location.lng;
 }
 
 
