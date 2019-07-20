@@ -10,6 +10,18 @@ Finish time: 1:30
 
 Actual time needed to complete: 30 minutes
 
+
+
+Number and name of feature: Added Database SetUp
+
+Estimate of time needed to complete: 30 Minutes
+
+Start time: 1:30
+
+Finish time: 1:50
+
+Actual time needed to complete: 20 minutes
+
 # Project Name
 
 **Author**: Jessica Walters
