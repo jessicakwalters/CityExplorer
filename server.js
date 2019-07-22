@@ -33,6 +33,8 @@ app.get('/weather', getWeather);
 
 app.get('/events', getEvents);
 
+app.get('/movies', getMovies);
+
 // Error handler
 function handleError(err, res) {
   console.error(err);
@@ -44,6 +46,7 @@ function handleError(err, res) {
 // Check the DB for Info
 function lookup(options) {
   //SQL Query match on location id
+  console.log(options.tableName);
   const SQL = `SELECT * FROM ${options.tableName} WHERE location_id=$1;`;
   //grab big option object - look for location property
   const values = [options.location];
@@ -77,13 +80,12 @@ const timeouts = {
 
 // Models
 function Location(query, res) {
-  this.tableName = 'locations';
   this.search_query = query;
   this.formatted_query = res.body.results[0].formatted_address;
   this.latitude = res.body.results[0].geometry.location.lat;
   this.longitude = res.body.results[0].geometry.location.lng;
 }
-
+ Location.tableName = 'locations';
 
 Location.lookupLocation = (location) => {
   const SQL = `SELECT * FROM locations WHERE search_query=$1;`;
@@ -98,34 +100,35 @@ Location.lookupLocation = (location) => {
       } else {
         location.cacheMiss();
       }
+      console.log('lookuplocation end');
     })
     .catch( (error) => {
       handleError(error)
     });
+
 };
 
 //don't use an arrow function here cause we'll need THIS
 Location.prototype.save = function () {
-    //insert the new location into the db passing the 4 array columns in order to the table
+  //insert the new location into the db passing the 4 array columns in order to the table
   const SQL = `INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING RETURNING id;`;
 
   const values = [this.search_query, this.formatted_query, this.latitude, this.longitude];
-  
+
   return client.query(SQL, values)
     .then( (result) => {
-        //set the id on the location object to be the db id
+      //set the id on the location object to be the db id
       this.id = result.rows[0].id;
       return this;
     });
 };
 
 function Weather(day) {
-  this.tableName = 'weathers';
   this.forecast = day.summary;
   this.time = new Date(day.time * 1000).toString().slice(0, 15);
   this.created_at = Date.now();
 }
-
+Weather.tableName = 'weathers';
 Weather.lookup = lookup;
 Weather.deleteByLocationId = deleteByLocationId;
 
@@ -139,7 +142,6 @@ Weather.prototype.save = function (location_id) {
 };
 
 function Event(event) {
-  this.tableName = 'events';
   this.link = event.url;
   this.name = event.name.text;
   this.event_date = new Date(event.start.local).toString().slice(0, 15);
@@ -147,6 +149,7 @@ function Event(event) {
 }
 
 Event.lookup = lookup;
+Event.tableName = 'events';
 
 Event.prototype.save = function (location_id) {
 
@@ -174,15 +177,19 @@ function getLocation(request, response) {
       return superagent.get(url)
         .then( (result) => {
           const location = new Location(this.query, result);
+          console.log(result);
           location.save()
             .then((location) => response.send(location));
         })
-        .catch( (error) => handleError(error));
+        .catch( (error) => {
+          handleError(error)
+        });
     }
   });
 }
 
 function getWeather(request, response) {
+
   Weather.lookup({
     tableName: Weather.tableName,
 
@@ -256,6 +263,64 @@ function getEvents(request, response) {
     }
   });
 }
+
+function getMovies(request, response) {
+  console.log('Movies: ' + request.query.data.formatted_query);
+
+  Movie.lookup({
+    tableName: Movie.tableName,
+
+    location: request.query.data.id,
+
+    cacheHit: function (result) {
+      response.send(result.rows);
+    },
+
+    cacheMiss: function () {
+      const stringQuery = request.query.data.formatted_query.slice(0, request.query.data.formatted_query.indexOf(','));
+
+      const url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${stringQuery}`;
+
+      superagent.get(url)
+
+        .then( (result) => {
+          const movieEntries = result.body.results.map(movieData => {
+
+            const movie = new Movie(movieData);
+            movie.save(request.query.data.id);
+            return movie;
+          });
+
+          response.send(movieEntries);
+        })
+        .catch((error) => {
+          handleError(error, response)
+        });
+    }
+  });
+}
+
+function Movie(movieObj) {
+  this.title = movieObj.title;
+  this.overview = movieObj.overview;
+  this.average_votes = movieObj.vote_average;
+  this.total_votes = movieObj.vote_count;
+  this.image_url = 'https://image.tmdb.org/t/p/w185_and_h278_bestv2/'+ movieObj.poster_path;
+  this.popularity = movieObj.popularity;
+  this.released_on = movieObj.release_date;
+}
+Movie.tableName = 'movies';
+
+Movie.prototype.save = function (location_id) {
+
+  const SQL = `INSERT INTO ${this.tableName} (title, overview, average_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
+
+  const values = [this.title, this.overview, this.average_votes, this.image_url, this.popularity, this.released_on, this.location_id];
+
+  client.query(SQL, values);
+};
+
+Movie.lookup = lookup;
 
 app.listen(PORT, () => {
   console.log('Listening on port: ' + PORT);
