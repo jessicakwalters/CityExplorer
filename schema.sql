@@ -33,9 +33,9 @@ CREATE TABLE events (
 CREATE TABLE movies ( 
     id SERIAL PRIMARY KEY, 
     title VARCHAR(255),
-    overview VARCHAR(255),
+    overview VARCHAR(8000),
     average_votes DECIMAL(255, 5),
-    total_votes INTEGER NOT NULL,
+    total_votes INTEGER,
     image_url VARCHAR(255),
     popularity VARCHAR(255),
     released_on VARCHAR(255),

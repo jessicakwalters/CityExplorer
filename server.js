@@ -85,7 +85,8 @@ function Location(query, res) {
   this.latitude = res.body.results[0].geometry.location.lat;
   this.longitude = res.body.results[0].geometry.location.lng;
 }
- Location.tableName = 'locations';
+
+Location.tableName = 'locations';
 
 Location.lookupLocation = (location) => {
   const SQL = `SELECT * FROM locations WHERE search_query=$1;`;
@@ -135,8 +136,8 @@ Weather.lookup = lookup;
 Weather.deleteByLocationId = deleteByLocationId;
 
 Weather.prototype.save = function (location_id) {
-
-  const SQL = `INSERT INTO ${this.tableName} (forecast, time, created_at, location_id) VALUES ($1, $2, $3, $4);`;
+  
+  const SQL = `INSERT INTO ${Weather.tableName} (forecast, time, created_at, location_id) VALUES ($1, $2, $3, $4);`;
 
   const values = [this.forecast, this.time, this.created_at, location_id];
 
@@ -155,7 +156,7 @@ Event.tableName = 'events';
 
 Event.prototype.save = function (location_id) {
 
-  const SQL = `INSERT INTO ${this.tableName} (link, name, event_date, summary, location_id) VALUES ($1, $2, $3, $4, $5);`;
+  const SQL = `INSERT INTO ${Event.tableName} (link, name, event_date, summary, location_id) VALUES ($1, $2, $3, $4, $5);`;
 
   const values = [this.link, this.name, this.event_date, this.summary, location_id];
 
@@ -181,7 +182,8 @@ function getLocation(request, response) {
           const location = new Location(this.query, result);
           console.log(result);
           location.save()
-           .then((location) => response.send(location));
+            .then((location) => response.send(location))
+            .catch(err => console.error(err));
         })
         .catch( (error) => {
           return handleError(error);
@@ -315,9 +317,9 @@ Movie.tableName = 'movies';
 
 Movie.prototype.save = function (location_id) {
 
-  const SQL = `INSERT INTO ${this.tableName} (title, overview, average_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
+  const SQL = `INSERT INTO ${Movie.tableName} (title, overview, average_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
 
-  const values = [this.title, this.overview, this.average_votes, this.image_url, this.popularity, this.released_on, this.location_id];
+  const values = [this.title, this.overview, this.average_votes, this.image_url, this.popularity, this.released_on, location_id];
 
   client.query(SQL, values);
 };
