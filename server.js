@@ -35,12 +35,23 @@ app.get('/events', getEvents);
 
 app.get('/movies', getMovies);
 
+app.get('/yelp', getYelp)
+
 // Error handler
 function handleError(err, res) {
   console.error(err);
   if(res) {
     return res.status(500).send('Sorry, something went wrong');
   }
+}
+
+// Timeouts
+const timeouts = {
+  weather: 15 * 1000,
+  yelp: 24 * 1000 * 60 * 60,
+  movies: 30 * 1000 * 60 * 60 * 24,
+  eventbrite: 6 * 1000 * 60 * 60,
+  trails: 7 * 1000 * 60 * 60 * 24
 }
 
 // Check the DB for Info
@@ -73,10 +84,6 @@ function deleteByLocationId(table, city) {
   const SQL = `DELETE from ${table} WHERE location_id=${city};`;
   return client.query(SQL);
 }
-//set timeout vars so that we know when to reset the db
-const timeouts = {
-  weathers: 15 * 1000
-}
 
 // Models
 function Location(query, res) {
@@ -84,6 +91,12 @@ function Location(query, res) {
   this.formatted_query = res.body.results[0].formatted_address;
   this.latitude = res.body.results[0].geometry.location.lat;
   this.longitude = res.body.results[0].geometry.location.lng;
+}
+
+// Delete old data
+function deleteByLocationId(table, id) {
+  const SQL = `DELETE from ${table} WHERE location_id=${id};`;
+  return client.query(SQL);
 }
 
 Location.tableName = 'locations';
@@ -153,6 +166,7 @@ function Event(event) {
 
 Event.lookup = lookup;
 Event.tableName = 'events';
+Event.deleteByLocationId = deleteByLocationId;
 
 Event.prototype.save = function (location_id) {
 
@@ -243,7 +257,13 @@ function getEvents(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      response.send(result.rows);
+      let ageOfResults = (Date.now() - result.rows[0].created_at);
+      if (ageOfResults > timeouts.eventbrite) {
+        Event.deleteByLocationId(Event.tableName, request.query.data.id);
+        this.cacheMiss();
+      } else {
+        response.send(result.rows);
+      }
     },
 
     cacheMiss: function () {
@@ -277,7 +297,13 @@ function getMovies(request, response) {
     location: request.query.data.id,
 
     cacheHit: function (result) {
-      response.send(result.rows);
+      let ageOfResults = (Date.now() - result.rows[0].created_at);
+      if (ageOfResults > timeouts.movies) {
+        Movie.deleteByLocationId(Movie.tableName, request.query.data.id);
+        this.cacheMiss();
+      } else {
+        response.send(result.rows);
+      }
     },
 
     cacheMiss: function () {
@@ -314,7 +340,7 @@ function Movie(movieObj) {
   this.released_on = movieObj.release_date;
 }
 Movie.tableName = 'movies';
-
+Movie.deleteByLocationId = deleteByLocationId;
 Movie.prototype.save = function (location_id) {
 
   const SQL = `INSERT INTO ${Movie.tableName} (title, overview, average_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
@@ -325,6 +351,66 @@ Movie.prototype.save = function (location_id) {
 };
 
 Movie.lookup = lookup;
+
+function Yelp(business) {
+  this.name = business.name;
+  this.image_url = business.image_url;
+  this.price = business.price;
+  this.rating = business.rating;
+  this.url = business.url;
+  this.created_at = Date.now();
+}
+
+Yelp.tableName = 'yelp';
+Yelp.lookup = lookup;
+Yelp.deleteByLocationId = deleteByLocationId;
+
+Yelp.prototype.save = function (location_id) {
+    const SQL = `INSERT INTO ${Yelp.tableName} (name, image_url, price, rating, url, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
+    const values = [this.name, this.image_url, this.price, this.rating, this.url, this.created_at, location_id];
+
+    client.query(SQL, values);
+  }
+
+
+function getYelp(request, response) {
+  Yelp.lookup({
+    tableName: Yelp.tableName,
+
+    location: request.query.data.id,
+
+    cacheHit: function (result) {
+      let ageOfResults = (Date.now() - result.rows[0].created_at);
+      if (ageOfResults > timeouts.yelp) {
+        Yelp.deleteByLocationId(Yelp.tableName, request.query.data.id);
+        this.cacheMiss();
+      } else {
+        response.send(result.rows);
+      }
+    },
+
+    cacheMiss: function () {
+      const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
+
+      superagent.get(url)
+        .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
+        .then(result => {
+          const yelpSummaries = result.body.businesses.map(business => {
+            const review = new Yelp(business);
+            review.save(request.query.data.id);
+            return review;
+          });
+
+          response.send(yelpSummaries);
+        })
+        .catch( (error) => {
+          return handleError(error, response)
+        }
+        );
+    }
+  })
+}
+
 
 app.listen(PORT, () => {
   console.log('Listening on port: ' + PORT);

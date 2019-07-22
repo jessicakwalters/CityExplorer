@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS yelp;
 DROP TABLE IF EXISTS movies;
 DROP TABLE IF EXISTS weathers;
 DROP TABLE IF EXISTS events;
@@ -26,6 +27,7 @@ CREATE TABLE events (
   name VARCHAR(255),
   event_date VARCHAR(255),
   summary VARCHAR(255),
+  created_at BIGINT,
   location_id INTEGER NOT NULL,
   FOREIGN KEY (location_id) REFERENCES locations (id)
 );
@@ -39,6 +41,20 @@ CREATE TABLE movies (
     image_url VARCHAR(255),
     popularity VARCHAR(255),
     released_on VARCHAR(255),
+    created_at BIGINT,
     location_id INTEGER NOT NULL,
     FOREIGN KEY (location_id) REFERENCES locations (id)
-  );
+);
+
+CREATE TABLE yelp (
+    id SERIAL PRIMARY KEY, 
+    name VARCHAR(255),
+    image_url VARCHAR(255),
+    price VARCHAR(255),
+    rating DECIMAL(255, 5),
+    url VARCHAR(255),
+    created_at BIGINT,
+    location_id INTEGER NOT NULL,
+    FOREIGN KEY (location_id) REFERENCES locations (id)
+);
+
