@@ -39,7 +39,7 @@ app.get('/movies', getMovies);
 function handleError(err, res) {
   console.error(err);
   if(res) {
-    res.status(500).send('Sorry, something went wrong');
+    return res.status(500).send('Sorry, something went wrong');
   }
 }
 
@@ -63,7 +63,7 @@ function lookup(options) {
       }
     })
     .catch( (error) => {
-      handleError(error)
+      return handleError(error);
     });
 }
 
@@ -103,7 +103,7 @@ Location.lookupLocation = (location) => {
       console.log('lookuplocation end');
     })
     .catch( (error) => {
-      handleError(error)
+      return handleError(error);
     });
 
 };
@@ -120,6 +120,8 @@ Location.prototype.save = function () {
       //set the id on the location object to be the db id
       this.id = result.rows[0].id;
       return this;
+    }).catch( (error) => {
+      return handleError(error);
     });
 };
 
@@ -179,10 +181,10 @@ function getLocation(request, response) {
           const location = new Location(this.query, result);
           console.log(result);
           location.save()
-            .then((location) => response.send(location));
+           .then((location) => response.send(location));
         })
         .catch( (error) => {
-          handleError(error)
+          return handleError(error);
         });
     }
   });
@@ -226,7 +228,7 @@ function getWeather(request, response) {
           response.send(weatherSummaries);
         })
         .catch((error) => {
-          handleError(error, response)
+          return handleError(error, response);
         });
     }
   });
@@ -258,7 +260,7 @@ function getEvents(request, response) {
           response.send(events);
         })
         .catch((error) => {
-          handleError(error, response)
+          return handleError(error, response);
         });
     }
   });
@@ -294,7 +296,7 @@ function getMovies(request, response) {
           response.send(movieEntries);
         })
         .catch((error) => {
-          handleError(error, response)
+          return handleError(error, response);
         });
     }
   });
